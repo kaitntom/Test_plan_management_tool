@@ -18,7 +18,7 @@ Clone repository
 ```bash
 git clone <the repo>
 ```
-Switch into project directory
+Switch into the project directory
 ```bash
 cd Test_plan_management_tool
 ```
@@ -66,7 +66,7 @@ then switch into the frontend
 ```bash
 cd frontend
 ```
-Start frontend
+Start the frontend
 ```bash
 python3 -m http.server 5500
 ```
@@ -81,9 +81,9 @@ The application is fully usable once the backend is running and `http://localhos
 2. Make sure AI mode is set to remote
 3. Click on `Choose File` in order to upload a file
 4. Click on `Extract Text`
-5. Adjust the # of Steps; can choose anywhere from 1-50
+5. Adjust the # of Steps; you can choose anywhere from 1-50
 6. Click `Generate Test Steps`
-7. Edit the Generated the plan if you want
+7. Edit the generated plan if you want
 8. Click on `Save / Update Plan`
 
 ---
@@ -91,7 +91,7 @@ The application is fully usable once the backend is running and `http://localhos
 ## Features
 
 * Upload and extract text from PDF and DOCX
-* AI-generated test plan title, description, and steps
+* Automatically generates test plan titles, descriptions, and steps
 * Manual editing of all fields including individual steps
 * Create, edit, delete, and manage multiple saved plans
 * No build steps required, runs locally in minutes
