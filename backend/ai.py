@@ -3,7 +3,7 @@ from openai import OpenAI
 
 # --------------------------------------------------
 # 🔑 YOUR API KEY — PASTE BETWEEN THE QUOTES
-OPENAI_API_KEY = ""
+OPENAI_API_KEY = "PASTE_KEY_HERE"
 # --------------------------------------------------
 
 # Fail-safe check
