@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Test Plan Tool</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 25px; }
+    .step-row { margin-bottom: 6px; }
+    button { margin-left: 6px; }
+    hr { margin: 18px 0; }
+  </style>
+</head>
+<body>
+
+<h2>AI Test Plan Tool</h2>
+
+<label>AI Mode:</label>
+<select id="aiMode">
+  <option value="remote">Remote</option>
+  <option value="local">Local</option>
+</select>
+
+<br><br>
+
+<input type="file" id="fileUpload">
+<button onclick="extractFile()">Extract Text</button>
+
+<br><br>
+<textarea id="inputText" rows="8" cols="80" placeholder="Paste or extract text"></textarea>
+<br><br>
+
+<label># of Steps:</label>
+<input id="stepCount" type="number" value="10" min="1" max="50" style="width:60px;">
+
+<button onclick="generate()">Generate Test Steps</button>
+<button onclick="newBlankPlan()">Create Blank Plan</button>
+
+<hr>
+
+<h3>Suggested / Editing Plan</h3>
+
+<label>Title:</label><br>
+<input id="planTitle" style="width:400px;"><br><br>
+
+<label>Description:</label><br>
+<textarea id="planDesc" rows="4" cols="80"></textarea><br><br>
+
+<label>Steps:</label>
+<div id="stepsList"></div>
+
+<input id="newStep" placeholder="Add new step..." style="width:350px;">
+<button onclick="addStep()">Add Step</button>
+
+<br><br>
+<button onclick="savePlan()">Save / Update Plan</button>
+
+<hr>
+
+<h3>Saved Plans</h3>
+<div id="savedPlans"></div>
+
+<script>
+const API = "http://localhost:8000";
+
+let editingPlanId = null;
+let steps = [];
+let editingStepIndex = null;
+
+// ---------------- FILE TEXT EXTRACTION ----------------
+async function extractFile() {
+  const file = document.getElementById("fileUpload").files[0];
+  if (!file) return alert("No file selected.");
+
+  const fd = new FormData();
+  fd.append("file", file);
+
+  const res = await fetch(API + "/upload", { method: "POST", body: fd });
+  const data = await res.json();
+  document.getElementById("inputText").value = data.text;
+}
+
+// ---------------- AI GENERATION ----------------
+async function generate() {
+  const text = document.getElementById("inputText").value.trim();
+  const max_steps = parseInt(document.getElementById("stepCount").value) || 10;
+
+  if (!text) return alert("Please enter or extract text first.");
+
+  const res = await fetch(API + "/ai/suggest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, max_steps })
+  });
+
+  const data = await res.json();
+  loadIntoEditor(null, data.title, data.description, data.steps || []);
+}
+
+function newBlankPlan() {
+  loadIntoEditor(null, "", "", []);
+}
+
+function loadIntoEditor(id, title, desc, stepsArr) {
+  editingPlanId = id;
+  steps = Array.isArray(stepsArr) ? [...stepsArr] : [];
+  editingStepIndex = null;
+
+  document.getElementById("planTitle").value = title || "";
+  document.getElementById("planDesc").value = desc || "";
+  renderSteps();
+}
+
+// ---------------- STEP EDITING ----------------
+function renderSteps() {
+  const container = document.getElementById("stepsList");
+  container.innerHTML = "";
+
+  steps.forEach((step, i) => {
+    const row = document.createElement("div");
+    row.className = "step-row";
+
+    if (editingStepIndex === i) {
+      row.innerHTML = `
+        <input id="editStepInput" value="${step}" style="width:350px;">
+        <button onclick="saveStep(${i})">Save</button>
+        <button onclick="cancelStep()">Cancel</button>
+      `;
+    } else {
+      row.innerHTML = `
+        ${i + 1}. ${step}
+        <button onclick="editStep(${i})">Edit</button>
+        <button onclick="deleteStep(${i})">Delete</button>
+      `;
+    }
+
+    container.appendChild(row);
+  });
+}
+
+function addStep() {
+  const newVal = document.getElementById("newStep").value.trim();
+  if (!newVal) return;
+  steps.push(newVal);
+  document.getElementById("newStep").value = "";
+  renderSteps();
+}
+
+function editStep(i) {
+  editingStepIndex = i;
+  renderSteps();
+}
+
+function cancelStep() {
+  editingStepIndex = null;
+  renderSteps();
+}
+
+function saveStep(i) {
+  steps[i] = document.getElementById("editStepInput").value.trim();
+  editingStepIndex = null;
+  renderSteps();
+}
+
+function deleteStep(i) {
+  steps.splice(i, 1);
+  renderSteps();
+}
+
+// ---------------- PLAN SAVE / UPDATE ----------------
+async function savePlan() {
+  const plan = {
+    title: document.getElementById("planTitle").value.trim(),
+    description: document.getElementById("planDesc").value.trim(),
+    steps
+  };
+
+  if (!plan.title) return alert("Title cannot be empty.");
+
+  const method = editingPlanId != null ? "PUT" : "POST";
+  const endpoint = editingPlanId != null ? `${API}/plans/${editingPlanId}` : `${API}/plans`;
+
+  await fetch(endpoint, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(plan)
+  });
+
+  editingPlanId = null;
+  await loadPlans();
+  alert("Plan saved!");
+}
+
+// ---------------- LOAD & EDIT SAVED PLANS ----------------
+async function loadPlans() {
+  const res = await fetch(API + "/plans");
+  const list = await res.json();
+  const container = document.getElementById("savedPlans");
+  container.innerHTML = "";
+
+  list.forEach(plan => {
+    const block = document.createElement("div");
+    block.innerHTML = `
+      <b>${plan.title}</b><br>
+      ${plan.description}<br>
+      ${plan.steps.map(s => "- " + s).join("<br>")}<br>
+    `;
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Edit";
+    editBtn.onclick = () => {
+      loadIntoEditor(plan.id, plan.title, plan.description, plan.steps);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.onclick = async () => {
+      await fetch(`${API}/plans/${plan.id}`, { method: "DELETE" });
+      loadPlans();
+    };
+
+    block.appendChild(editBtn);
+    block.appendChild(delBtn);
+    block.appendChild(document.createElement("hr"));
+    container.appendChild(block);
+  });
+}
+
+loadPlans();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Python venv
+venv/
+.env/
+*.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Editor junk
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
